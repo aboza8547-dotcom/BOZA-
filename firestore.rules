@@ -1,0 +1,72 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Primitives
+    function isSignedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // User Validation
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'requestsToday', 'windowStart', 'lastRequestAt'])
+        && data.keys().size() == 5
+        && data.uid == request.auth.uid
+        && data.email is string
+        && data.requestsToday is int
+        && data.windowStart is timestamp
+        && data.lastRequestAt is timestamp;
+    }
+
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      
+      allow create: if isOwner(userId) 
+        && isValidUser(incoming())
+        && incoming().requestsToday == 1
+        && incoming().windowStart == request.time
+        && incoming().lastRequestAt == request.time;
+
+      allow update: if isOwner(userId)
+        && isValidUser(incoming())
+        && (
+          // Action: Increment within window
+          (
+            incoming().windowStart == existing().windowStart
+            && incoming().requestsToday == existing().requestsToday + 1
+            && existing().requestsToday < 1000
+            && request.time < existing().windowStart + duration.value(24, 'h')
+          ) ||
+          // Action: Reset after window
+          (
+            request.time >= existing().windowStart + duration.value(24, 'h')
+            && incoming().requestsToday == 1
+            && incoming().windowStart == request.time
+          )
+        )
+        && incoming().lastRequestAt == request.time
+        && incoming().email == existing().email
+        && incoming().uid == existing().uid;
+    }
+  }
+}

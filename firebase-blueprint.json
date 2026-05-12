@@ -1,0 +1,23 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and usage statistics",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "requestsToday": { "type": "integer" },
+        "windowStart": { "type": "string", "format": "date-time" },
+        "lastRequestAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "requestsToday", "windowStart"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User data and rate limiting information"
+    }
+  }
+}

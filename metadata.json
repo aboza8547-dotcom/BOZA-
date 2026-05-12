@@ -1,0 +1,9 @@
+{
+  "name": "Boza AI",
+  "description": "A powerful AI assistant like Claude Code, capable of analyzing images, PDFs, and data with Gemini.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ],
+  "majorCapabilities": []
+}
